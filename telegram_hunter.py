@@ -18,17 +18,12 @@ CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 SENT_FILE = "sent_opportunities.json"
 
-CHECK_INTERVAL = int(
-    os.getenv("CHECK_INTERVAL", "1800")
-)
-
 # ---------------------------------
 # SPEED SETTINGS
 # ---------------------------------
 
 # Maximum simultaneous website workers.
-# 8 is deliberately conservative because
-# the Youth Portal previously returned 429.
+# 8 is a conservative starting point.
 MAX_WORKERS = int(
     os.getenv("MAX_WORKERS", "8")
 )
@@ -41,6 +36,7 @@ TEST_LIMIT = None
 def load_sent():
 
     if not os.path.exists(SENT_FILE):
+
         return set()
 
     try:
@@ -55,28 +51,58 @@ def load_sent():
                 json.load(f)
             )
 
-    except Exception:
+    except Exception as error:
+
+        print(
+            "[Hunter] Could not load sent file:",
+            error
+        )
 
         return set()
 
 
 def save_sent(sent):
 
-    with open(
-        SENT_FILE,
-        "w",
-        encoding="utf-8"
-    ) as f:
+    try:
 
-        json.dump(
-            sorted(sent),
-            f,
-            ensure_ascii=False,
-            indent=2
+        with open(
+            SENT_FILE,
+            "w",
+            encoding="utf-8"
+        ) as f:
+
+            json.dump(
+                sorted(sent),
+                f,
+                ensure_ascii=False,
+                indent=2
+            )
+
+    except Exception as error:
+
+        print(
+            "[Hunter] Could not save sent file:",
+            error
         )
 
 
 def send_telegram(item):
+
+    if not TOKEN:
+
+        print(
+            "[Telegram] TELEGRAM_BOT_TOKEN missing."
+        )
+
+        return False
+
+    if not CHAT_ID:
+
+        print(
+            "[Telegram] TELEGRAM_CHAT_ID missing."
+        )
+
+        return False
 
     url = (
         f"https://api.telegram.org/"
@@ -179,6 +205,8 @@ def check_one(url):
 
     """
     Worker function.
+
+    Fetches and extracts one opportunity.
 
     Returns:
         item or None
@@ -358,7 +386,7 @@ def scan_once(sent):
                 )
 
                 # ---------------------------------
-                # DUPLICATE
+                # DUPLICATE CHECK
                 # ---------------------------------
 
                 if opportunity_url in sent:
@@ -394,7 +422,7 @@ def scan_once(sent):
         except KeyboardInterrupt:
 
             print(
-                "\n[Hunter] Stopping workers..."
+                "\n[Hunter] Scan interrupted."
             )
 
             executor.shutdown(
@@ -451,7 +479,7 @@ def main():
 
         print(
             "ERROR: TELEGRAM_BOT_TOKEN "
-            "missing from .env"
+            "missing from environment."
         )
 
         return
@@ -460,13 +488,13 @@ def main():
 
         print(
             "ERROR: TELEGRAM_CHAT_ID "
-            "missing from .env"
+            "missing from environment."
         )
 
         return
 
     # ---------------------------------
-    # LOAD SENT
+    # LOAD SENT DATABASE
     # ---------------------------------
 
     sent = load_sent()
@@ -518,59 +546,32 @@ def main():
             "Limit: ALL"
         )
 
-    print(
-        "Check interval:",
-        CHECK_INTERVAL,
-        "seconds"
-    )
-
     # ---------------------------------
-    # CONTINUOUS SCAN
+    # ONE SCAN ONLY
     # ---------------------------------
 
-    while True:
+    try:
 
-        try:
-
-            sent = scan_once(
-                sent
-            )
-
-        except KeyboardInterrupt:
-
-            print(
-                "\n[Hunter] Stopped."
-            )
-
-            break
-
-        except Exception as error:
-
-            print(
-                "[Hunter] Scan error:",
-                error
-            )
-
-        print()
-
-        print(
-            f"[Hunter] Next scan in "
-            f"{CHECK_INTERVAL} seconds."
+        scan_once(
+            sent
         )
 
-        try:
+    except KeyboardInterrupt:
 
-            time.sleep(
-                CHECK_INTERVAL
-            )
+        print(
+            "\n[Hunter] Stopped."
+        )
 
-        except KeyboardInterrupt:
+    except Exception as error:
 
-            print(
-                "\n[Hunter] Stopped."
-            )
+        print(
+            "[Hunter] Scan error:",
+            error
+        )
 
-            break
+    print(
+        "[Hunter] Scan finished."
+    )
 
 
 if __name__ == "__main__":
