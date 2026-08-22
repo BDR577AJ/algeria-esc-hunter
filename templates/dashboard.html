@@ -1,0 +1,22 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Algeria Volunteer Hunter</title>
+<style>
+body{font-family:Arial,sans-serif;max-width:1200px;margin:30px auto;padding:0 16px}
+.cards{display:flex;gap:12px;flex-wrap:wrap}.card{padding:14px;border:1px solid #ddd;border-radius:10px}
+table{width:100%;border-collapse:collapse;margin-top:20px}th,td{padding:10px;border-bottom:1px solid #ddd;text-align:left}
+a{text-decoration:none}.score{font-weight:bold}
+</style></head>
+<body>
+<h1>🇩🇿 Algeria Europe Volunteer Hunter</h1>
+<div class="cards">
+{% for k,v in stats.items() %}<div class="card"><b>{{k}}</b><br>{{v}}</div>{% endfor %}
+</div>
+<form><input name="q" value="{{q}}" placeholder="Search country, city, title"><button>Search</button></form>
+<table><tr><th>Score</th><th>Opportunity</th><th>Location</th><th>Dates</th><th>Deadline</th></tr>
+{% for r in rows %}
+<tr><td class="score">{{r["match_score"]}}/100</td>
+<td><a href="{{r["url"]}}" target="_blank">{{r["title"]}}</a></td>
+<td>{{r["location"]}}</td><td>{{r["activity_dates"]}}</td><td>{{r["deadline"] or "No deadline"}}</td></tr>
+{% endfor %}
+</table>
+</body></html>
